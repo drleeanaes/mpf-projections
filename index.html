@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MPF Strategy Calculator — Hospital Authority</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ──────────────────────────────────────────
+   TOKENS
+────────────────────────────────────────── */
+:root,[data-theme="dark"]{
+  --bg:#080c10;
+  --surface:#0d1318;
+  --surface2:#121a20;
+  --surface3:#18232b;
+  --border:rgba(255,255,255,0.06);
+  --border-md:rgba(255,255,255,0.11);
+  --text:#d8eaf5;
+  --muted:#4a6a80;
+  --dim:#1e3040;
+  --accent:#4fc3f7;
+  --accent-dim:rgba(79,195,247,0.10);
+  --accent-hi:rgba(79,195,247,0.22);
+  --accent-text:#040c12;
+  --green:#4dd9a0;
+  --green-dim:rgba(77,217,160,0.10);
+  --green-hi:rgba(77,217,160,0.20);
+  --red:#f07070;--red-dim:rgba(240,112,112,0.10);
+  --amber:#f0c060;
+  /* fund colours */
+  --c1:#4fc3f7;--c2:#4dd9a0;--c3:#f0a050;--c4:#a78bfa;--c5:#f07070;
+  /* chart */
+  --ct-grid:rgba(255,255,255,0.04);--ct-tick:#3a5a70;
+  --ct-tt:#0d1318;--ct-ttb:rgba(79,195,247,0.15);--ct-ttt:#4a6a80;--ct-ttv:#d8eaf5;
+}
+[data-theme="light"]{
+  --bg:#eef4f8;
+  --surface:#f8fbfd;
+  --surface2:#eef4f8;
+  --surface3:#e4edf4;
+  --border:rgba(0,0,0,0.07);
+  --border-md:rgba(0,0,0,0.13);
+  --text:#0d1e2a;
+  --muted:#5a7a90;
+  --dim:#c8dce8;
+  --accent:#0277bd;
+  --accent-dim:rgba(2,119,189,0.07);
+  --accent-hi:rgba(2,119,189,0.15);
+  --accent-text:#fff;
+  --green:#1a7a52;--green-dim:rgba(26,122,82,0.07);--green-hi:rgba(26,122,82,0.14);
+  --red:#b84040;--red-dim:rgba(184,64,64,0.10);
+  --amber:#8a6000;
+  --c1:#0277bd;--c2:#1a7a52;--c3:#c05000;--c4:#5b3fa0;--c5:#b84040;
+  --ct-grid:rgba(0,0,0,0.05);--ct-tick:#7a9aaa;
+  --ct-tt:#fff;--ct-ttb:rgba(0,0,0,0.08);--ct-ttt:#7a9aaa;--ct-ttv:#0d1e2a;
+}
+
+/* ──────────────────────────────────────────
+   RESET & BASE
+────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'IBM Plex Sans',sans-serif;
+  font-size:14px;line-height:1.65;
+  min-height:100vh;
+  transition:background .3s,color .3s;
+  overflow-x:hidden;
+}
+
+/* geometric background pattern */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(79,195,247,0.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(79,195,247,0.025) 1px,transparent 1px);
+  background-size:48px 48px;
+}
+[data-theme="light"] body::before{
+  background-image:
+    linear-gradient(rgba(2,119,189,0.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(2,119,189,0.04) 1px,transparent 1px);
+}
+
+.shell{max-width:1180px;margin:0 auto;padding:0 28px 100px;position:relative;z-index:1}
+
+/* ──────────────────────────────────────────
+   HEADER
+────────────────────────────────────────── */
+header{
+  padding:44px 0 32px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:40px;
+  display:flex;align-items:flex-end;justify-content:space-between;
+  gap:20px;flex-wrap:wrap;
+}
+
+.logo-area{display:flex;flex-direction:column;gap:5px}
+
+.eyebrow{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--accent);display:flex;align-items:center;gap:8px;
+}
+.eyebrow::before{content:'';width:24px;height:1px;background:var(--accent)}
+
+.site-title{
+  font-family:'Syne',sans-serif;
+  font-size:34px;font-weight:800;line-height:1.05;letter-spacing:-.5px;
+  color:var(--text);
+}
+
+.site-sub{
+  font-size:12px;color:var(--muted);
+  font-family:'IBM Plex Mono',monospace;margin-top:3px;
+}
+
+.header-right{display:flex;align-items:center;gap:12px}
+
+.mpf-badge{
+  font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--muted);
+  border:1px solid var(--border-md);border-radius:6px;padding:6px 12px;
+  line-height:1.7;text-align:right;
+}
+.mpf-badge strong{color:var(--accent);display:block;font-size:11px}
+
+.theme-btn{
+  width:36px;height:36px;border-radius:8px;
+  border:1px solid var(--border-md);background:var(--surface);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;flex-shrink:0;
+}
+.theme-btn:hover{background:var(--surface2)}
+.theme-btn svg{width:15px;height:15px}
+[data-theme="dark"] .icon-moon{display:none}[data-theme="dark"] .icon-sun{display:block}
+[data-theme="light"] .icon-sun{display:none}[data-theme="light"] .icon-moon{display:block}
+
+/* ──────────────────────────────────────────
+   LAYOUT
+────────────────────────────────────────── */
+.main-grid{
+  display:grid;
+  grid-template-columns:340px 1fr;
+  gap:24px;align-items:start;
+}
+@media(max-width:900px){.main-grid{grid-template-columns:1fr}}
+
+.sidebar{display:flex;flex-direction:column;gap:16px;position:sticky;top:24px}
+
+/* ──────────────────────────────────────────
+   PANELS
+────────────────────────────────────────── */
+.panel{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:20px 22px;
+  transition:background .3s,border-color .3s;
+}
+.panel-label{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;
+  text-transform:uppercase;letter-spacing:.14em;color:var(--muted);
+  margin-bottom:14px;display:flex;align-items:center;gap:8px;
+}
+.panel-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ──────────────────────────────────────────
+   YEAR SLIDER HERO
+────────────────────────────────────────── */
+.year-hero{
+  text-align:center;padding:20px 0 16px;
+  border-bottom:1px solid var(--border);margin-bottom:16px;
+}
+.year-display{
+  font-family:'Syne',sans-serif;
+  font-size:72px;font-weight:800;line-height:1;
+  color:var(--accent);letter-spacing:-3px;
+  transition:color .3s;
+}
+.year-label{
+  font-size:11px;color:var(--muted);
+  font-family:'IBM Plex Mono',monospace;margin-top:4px;
+}
+
+.yr-slider{
+  width:100%;-webkit-appearance:none;appearance:none;
+  height:3px;background:var(--dim);border-radius:2px;
+  outline:none;cursor:pointer;margin-bottom:6px;
+  transition:background .3s;
+}
+.yr-slider::-webkit-slider-thumb{
+  -webkit-appearance:none;width:20px;height:20px;
+  border-radius:50%;background:var(--accent);cursor:pointer;
+  border:3px solid var(--surface);
+  box-shadow:0 0 0 1px var(--accent),0 4px 12px rgba(79,195,247,0.3);
+  transition:transform .1s,background .3s;
+}
+[data-theme="light"] .yr-slider::-webkit-slider-thumb{box-shadow:0 0 0 1px var(--accent),0 4px 12px rgba(2,119,189,0.2)}
+.yr-slider::-webkit-slider-thumb:hover{transform:scale(1.15)}
+
+.yr-marks{
+  display:flex;justify-content:space-between;
+  font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--muted);
+}
+
+/* ──────────────────────────────────────────
+   FUND SELECTOR CARDS
+────────────────────────────────────────── */
+.fund-card{
+  border-radius:11px;padding:12px 14px;margin-bottom:8px;
+  border:1.5px solid var(--border);
+  cursor:pointer;transition:all .2s;
+  position:relative;overflow:hidden;
+}
+.fund-card::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  border-radius:2px 0 0 2px;transition:background .2s;
+}
+.fund-card.f1::before{background:var(--c1)}
+.fund-card.f2::before{background:var(--c2)}
+.fund-card.f3::before{background:var(--c3)}
+.fund-card.f4::before{background:var(--c4)}
+.fund-card.f5::before{background:var(--c5)}
+
+.fund-card:hover{border-color:var(--border-md);background:var(--surface2)}
+.fund-card.selected{background:var(--surface2)}
+.fund-card.selected.f1{border-color:var(--c1);box-shadow:0 0 0 1px rgba(79,195,247,0.15)}
+.fund-card.selected.f2{border-color:var(--c2);box-shadow:0 0 0 1px rgba(77,217,160,0.15)}
+.fund-card.selected.f3{border-color:var(--c3);box-shadow:0 0 0 1px rgba(240,160,80,0.15)}
+.fund-card.selected.f4{border-color:var(--c4);box-shadow:0 0 0 1px rgba(167,139,250,0.15)}
+.fund-card.selected.f5{border-color:var(--c5);box-shadow:0 0 0 1px rgba(240,112,112,0.15)}
+
+.fund-header{display:flex;align-items:center;gap:10px;margin-bottom:5px}
+.fund-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.fund-name{font-size:12px;font-weight:500;color:var(--text);flex:1}
+.fund-rank{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;
+  padding:1px 7px;border-radius:4px;font-weight:500;
+}
+.fund-rank.r1{background:rgba(79,195,247,0.15);color:var(--c1)}
+.fund-rank.r2{background:rgba(77,217,160,0.15);color:var(--c2)}
+.fund-rank.r3{background:rgba(240,160,80,0.15);color:var(--c3)}
+.fund-rank.r4{background:rgba(167,139,250,0.15);color:var(--c4)}
+.fund-rank.r5{background:rgba(240,112,112,0.15);color:var(--c5)}
+
+.fund-meta{
+  display:flex;gap:8px;font-size:10px;
+  font-family:'IBM Plex Mono',monospace;color:var(--muted);
+  flex-wrap:wrap;
+}
+.fund-meta .rate{font-weight:500;color:var(--text)}
+.fund-meta .fer{color:var(--muted)}
+.fund-meta .provider{color:var(--muted)}
+
+.fund-select-check{
+  position:absolute;top:10px;right:10px;
+  width:16px;height:16px;border-radius:50%;
+  border:1.5px solid var(--border-md);
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;transition:all .2s;
+  background:transparent;
+}
+.fund-card.selected .fund-select-check{
+  background:var(--accent);border-color:var(--accent);color:var(--accent-text);
+}
+
+.multi-hint{
+  font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;
+  text-align:center;padding:6px 0 2px;
+}
+
+/* ──────────────────────────────────────────
+   CONTRIBUTION INFO
+────────────────────────────────────────── */
+.contrib-display{
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;
+}
+.cd-box{
+  background:var(--surface2);border-radius:8px;
+  padding:8px 10px;border:1px solid var(--border);
+}
+.cd-lbl{font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-bottom:2px;text-transform:uppercase;letter-spacing:.03em}
+.cd-val{font-size:13px;font-weight:500;color:var(--text);font-family:'IBM Plex Mono',monospace}
+.cd-val.accent{color:var(--accent)}
+.cd-val.green{color:var(--green)}
+
+/* ──────────────────────────────────────────
+   MAIN CONTENT — METRICS
+────────────────────────────────────────── */
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px}
+@media(max-width:600px){.metrics{grid-template-columns:1fr 1fr}}
+.mc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;transition:background .3s,border-color .3s}
+.mc.hi{border-color:var(--accent-hi);background:var(--accent-dim)}
+.mc.green-hi{border-color:var(--green-hi);background:var(--green-dim)}
+.mc-lbl{font-size:10px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px}
+.mc-val{font-size:20px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--text);letter-spacing:-.4px;line-height:1.2}
+.mc-sub{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.4}
+
+/* ──────────────────────────────────────────
+   FUND COMPARISON RANKING
+────────────────────────────────────────── */
+.rank-strip{
+  display:flex;flex-direction:column;gap:6px;margin-bottom:20px;
+}
+.rank-row{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:10px 14px;
+  display:flex;align-items:center;gap:12px;
+  transition:background .3s,border-color .3s;
+}
+.rank-row.active{border-color:var(--border-md)}
+.rank-pos{
+  font-family:'Syne',sans-serif;font-weight:800;font-size:18px;
+  min-width:24px;color:var(--muted);
+}
+.rank-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.rank-name{font-size:12px;font-weight:500;color:var(--text);flex:1}
+.rank-bar-wrap{flex:2;height:6px;background:var(--surface3);border-radius:3px;overflow:hidden}
+.rank-bar{height:6px;border-radius:3px;transition:width .6s ease}
+.rank-val{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;min-width:90px;text-align:right}
+.rank-gain{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);min-width:70px;text-align:right}
+
+/* ──────────────────────────────────────────
+   CHARTS
+────────────────────────────────────────── */
+.chart-panels{display:flex;flex-direction:column;gap:18px}
+.cp{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 22px;transition:background .3s}
+.cp-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.cp-title{font-size:13px;font-weight:500;color:var(--text)}
+.cp-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+.leg{display:flex;align-items:center;gap:4px}
+.leg-sw{width:14px;height:3px;border-radius:1px;flex-shrink:0}
+
+/* ──────────────────────────────────────────
+   YEAR TABLE
+────────────────────────────────────────── */
+.yr-table{width:100%;border-collapse:collapse;font-size:11px}
+.yr-table th{
+  font-size:10px;font-weight:500;color:var(--muted);
+  padding:6px 8px;border-bottom:0.5px solid var(--border-md);
+  text-align:left;font-family:'IBM Plex Mono',monospace;
+  text-transform:uppercase;letter-spacing:.04em;position:sticky;top:0;
+  background:var(--surface);
+}
+.yr-table td{
+  padding:5px 8px;border-bottom:0.5px solid var(--border);
+  font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text);
+}
+.yr-table tr:last-child td{border-bottom:none}
+.yr-table td.g{color:var(--green)}
+.yr-table td.accent{color:var(--accent)}
+.yr-table tr.cur td{background:var(--accent-dim);color:var(--accent)}
+
+/* ──────────────────────────────────────────
+   FOOTER
+────────────────────────────────────────── */
+.footnote{
+  margin-top:24px;padding:14px 18px;
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  font-size:11px;color:var(--muted);
+  font-family:'IBM Plex Mono',monospace;line-height:1.85;
+  transition:background .3s;
+}
+.footnote strong{color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<header>
+  <div class="logo-area">
+    <div class="eyebrow">Hospital Authority · HAMPFS</div>
+    <div class="site-title">MPF Strategy<br>Calculator</div>
+    <div class="site-sub">Top 5 HA MPF funds · $1,500 + $1,500 monthly · Toggle years</div>
+  </div>
+  <div class="header-right">
+    <div class="mpf-badge">
+      <strong>MPFA Fund Platform 2025/26</strong>
+      Employee: HK$1,500/mo<br>
+      Employer: HK$1,500/mo<br>
+      Total: HK$3,000/mo
+    </div>
+    <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle theme">
+      <svg class="icon-sun" viewBox="0 0 16 16" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round">
+        <circle cx="8" cy="8" r="3"/>
+        <line x1="8" y1="1" x2="8" y2="2.5"/><line x1="8" y1="13.5" x2="8" y2="15"/>
+        <line x1="1" y1="8" x2="2.5" y2="8"/><line x1="13.5" y1="8" x2="15" y2="8"/>
+        <line x1="3.05" y1="3.05" x2="4.1" y2="4.1"/><line x1="11.9" y1="11.9" x2="12.95" y2="12.95"/>
+        <line x1="12.95" y1="3.05" x2="11.9" y2="4.1"/><line x1="4.1" y1="11.9" x2="3.05" y2="12.95"/>
+      </svg>
+      <svg class="icon-moon" viewBox="0 0 16 16" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13.5 10.5A6 6 0 0 1 5.5 2.5a6 6 0 1 0 8 8z"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<div class="main-grid">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+
+    <!-- year slider -->
+    <div class="panel">
+      <div class="panel-label">Service years</div>
+      <div class="year-hero">
+        <div class="year-display" id="yrDisplay">10</div>
+        <div class="year-label">years of MPF contributions</div>
+      </div>
+      <input type="range" class="yr-slider" id="yrSlider" min="1" max="35" value="10" step="1" oninput="update()">
+      <div class="yr-marks">
+        <span>1</span><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span><span>30</span><span>35</span>
+      </div>
+    </div>
+
+    <!-- contribution summary -->
+    <div class="panel">
+      <div class="panel-label">Monthly contributions</div>
+      <div class="contrib-display">
+        <div class="cd-box"><div class="cd-lbl">Employee</div><div class="cd-val">HK$1,500</div></div>
+        <div class="cd-box"><div class="cd-lbl">Employer</div><div class="cd-val">HK$1,500</div></div>
+        <div class="cd-box"><div class="cd-lbl">Total/mo</div><div class="cd-val accent">HK$3,000</div></div>
+        <div class="cd-box" style="grid-column:1/-1">
+          <div class="cd-lbl">Total invested after <span id="yrInContrib">10</span> yrs</div>
+          <div class="cd-val green" id="totalInvested">HK$360,000</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- fund selector -->
+    <div class="panel">
+      <div class="panel-label">Select MPF funds to compare</div>
+      <div class="multi-hint">Click to toggle · compare up to 5</div>
+      <div style="height:8px"></div>
+      <div id="fundCards"></div>
+    </div>
+
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main>
+
+    <!-- metrics -->
+    <div class="metrics" id="metricsRow"></div>
+
+    <!-- fund ranking at selected year -->
+    <div class="cp" style="margin-bottom:18px">
+      <div class="cp-header">
+        <div>
+          <div class="cp-title">Fund ranking at year <span id="rankYrLabel">10</span></div>
+          <div class="cp-sub">Final value · highest to lowest · $3,000/mo · selected funds shown</div>
+        </div>
+      </div>
+      <div class="rank-strip" id="rankStrip"></div>
+    </div>
+
+    <div class="chart-panels">
+
+      <!-- growth chart -->
+      <div class="cp">
+        <div class="cp-header">
+          <div>
+            <div class="cp-title">Accumulated value over time</div>
+            <div class="cp-sub">HK$3,000/month compounded monthly · all selected funds</div>
+          </div>
+          <div class="legend" id="lgd1"></div>
+        </div>
+        <div style="position:relative;height:300px">
+          <canvas id="growthChart" role="img" aria-label="Line chart showing MPF fund growth over years for all selected funds">Growth chart.</canvas>
+        </div>
+      </div>
+
+      <!-- bar chart at selected year -->
+      <div class="cp">
+        <div class="cp-header">
+          <div>
+            <div class="cp-title">Final value comparison at year <span id="barYrLabel">10</span></div>
+            <div class="cp-sub">Side-by-side · contributions vs investment gains</div>
+          </div>
+        </div>
+        <div style="position:relative;height:240px">
+          <canvas id="barChart" role="img" aria-label="Bar chart comparing final value of each MPF fund at selected year">Comparison bar chart.</canvas>
+        </div>
+      </div>
+
+      <!-- year by year table for selected fund -->
+      <div class="cp">
+        <div class="cp-header">
+          <div>
+            <div class="cp-title">Year-by-year breakdown</div>
+            <div class="cp-sub">All selected funds · contributions, fund value, gain each year</div>
+          </div>
+        </div>
+        <div style="overflow-x:auto;max-height:340px;overflow-y:auto">
+          <table class="yr-table">
+            <thead><tr id="tableHead"></tr></thead>
+            <tbody id="tablebody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="footnote">
+      <strong>Fund data from MPFA Fund Platform &amp; BCT/Fidelity annual reports (as at Dec 2025/Mar 2026)</strong><br>
+      Mandatory contributions: Employee HK$1,500/mo + Employer HK$1,500/mo = HK$3,000/mo total (statutory cap). Returns are annualised historical rates used as constant projection. All returns are net of fund expenses (FER). Past performance does not guarantee future results.<br>
+      DIS Core Accumulation: MPFA-mandated fee cap 0.75% p.a. · BCT World Equity: passive index, lowest fee among active equity funds ·
+      Fidelity Global Equity: active management, higher FER but strong historical outperformance ·
+      BCT E70 Mixed Asset: 70% equity / 30% bond, award-winning balanced fund ·
+      Fidelity Growth Fund: 80%+ equity, actively managed. This calculator is for educational purposes only and does not constitute financial advice.
+    </div>
+  </main>
+</div>
+</div>
+
+<script>
+/* ── theme ── */
+function toggleTheme(){
+  const h=document.documentElement;
+  const n=h.dataset.theme==='dark'?'light':'dark';
+  h.dataset.theme=n;
+  try{localStorage.setItem('mpf-theme',n)}catch(e){}
+  update();
+}
+try{const s=localStorage.getItem('mpf-theme');if(s)document.documentElement.dataset.theme=s}catch(e){}
+
+/* ──────────────────────────────────────────
+   FUND DATA — TOP 5 from previous analysis
+   Source: MPFA Fund Platform, BCT/Fidelity
+   annual reports, Dec 2025 / Mar 2026
+────────────────────────────────────────── */
+const FUNDS = [
+  {
+    id:'bct-world',
+    rank:1,
+    name:'BCT World Equity Fund',
+    provider:'BCT (MPF) Pro Choice',
+    type:'Global Equity · Passive Index',
+    rate:0.105,           // ~10.5% p.a. 10-yr annualised
+    fer:0.78,
+    colorVar:'--c1',
+    cls:'f1',rankCls:'r1',
+    tenYr:'~10.5%',fiveYr:'~12.1%',oneYr:'+19.4%',
+    note:'Best 10-yr performer · Passive global index · Lowest fee among equity funds',
+  },
+  {
+    id:'fid-global',
+    rank:2,
+    name:'Fidelity Global Equity Fund',
+    provider:'Fidelity Retirement Master Trust',
+    type:'Global Equity · Active',
+    rate:0.098,           // ~9.8% p.a. 10-yr annualised
+    fer:1.47,
+    colorVar:'--c2',
+    cls:'f2',rankCls:'r2',
+    tenYr:'~9.8%',fiveYr:'~11.4%',oneYr:'+18.2%',
+    note:'Strong active management · Consistent top performer across time horizons',
+  },
+  {
+    id:'fid-growth',
+    rank:3,
+    name:'Fidelity Growth Fund',
+    provider:'Fidelity Retirement Master Trust',
+    type:'Mixed Asset · 80%+ Equity · Active',
+    rate:0.081,           // ~8.1% p.a. 10-yr annualised
+    fer:1.50,
+    colorVar:'--c3',
+    cls:'f3',rankCls:'r3',
+    tenYr:'~8.1%',fiveYr:'~9.2%',oneYr:'+16.3%',
+    note:'High-growth active fund · Best Fidelity balanced option',
+  },
+  {
+    id:'bct-e70',
+    rank:4,
+    name:'BCT E70 Mixed Asset Fund',
+    provider:'BCT (MPF) Pro Choice',
+    type:'Mixed Asset · 70% Equity / 30% Bond',
+    rate:0.078,           // ~7.8% p.a. 10-yr annualised
+    fer:0.89,
+    colorVar:'--c4',
+    cls:'f4',rankCls:'r4',
+    tenYr:'~7.8%',fiveYr:'~8.3%',oneYr:'+14.2%',
+    note:'10-yr Consistent Performer award · Downside cushion in 2022 crash',
+  },
+  {
+    id:'dis-core',
+    rank:5,
+    name:'DIS Core Accumulation Fund',
+    provider:'BCT or Fidelity (MPFA DIS)',
+    type:'Mixed Asset · 60% Equity · DIS',
+    rate:0.067,           // ~6.7% p.a. since 2017 inception
+    fer:0.75,
+    colorVar:'--c5',
+    cls:'f5',rankCls:'r5',
+    tenYr:'n/a (est ~6.7%)',fiveYr:'~5.5%',oneYr:'+13.8%',
+    note:'MPFA fee cap 0.75% · Auto de-risks toward retirement · "Set and forget"',
+  },
+];
+
+const FUND_COLORS = ['--c1','--c2','--c3','--c4','--c5'];
+const MONTHLY_CONTRIB = 3000;
+
+/* ── selected state ── */
+let selected = new Set(['bct-world','fid-global','bct-e70','dis-core','fid-growth']); // all on by default
+
+/* ── build fund cards ── */
+const fc = document.getElementById('fundCards');
+FUNDS.forEach(f => {
+  const div = document.createElement('div');
+  div.className = `fund-card ${f.cls} selected`;
+  div.id = 'card-'+f.id;
+  div.onclick = () => toggleFund(f.id);
+  div.innerHTML = `
+    <div class="fund-select-check" id="chk-${f.id}">✓</div>
+    <div class="fund-header">
+      <div class="fund-dot" style="background:var(${f.colorVar})"></div>
+      <div class="fund-name">${f.name}</div>
+      <span class="fund-rank ${f.rankCls}">#${f.rank}</span>
+    </div>
+    <div class="fund-meta">
+      <span class="provider">${f.provider.split(' ')[0]}</span>
+      <span>·</span>
+      <span class="rate">${f.tenYr} p.a.</span>
+      <span>·</span>
+      <span class="fer">FER ${f.fer}%</span>
+    </div>
+    <div style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-top:4px;line-height:1.4">${f.note}</div>`;
+  fc.appendChild(div);
+});
+
+function toggleFund(id){
+  if(selected.has(id)){
+    if(selected.size<=1) return; // keep at least one
+    selected.delete(id);
+    document.getElementById('card-'+id).classList.remove('selected');
+    document.getElementById('chk-'+id).textContent='';
+  } else {
+    selected.add(id);
+    document.getElementById('card-'+id).classList.add('selected');
+    document.getElementById('chk-'+id).textContent='✓';
+  }
+  update();
+}
+
+/* ── simulation ── */
+function simulate(annualRate, years){
+  const r = annualRate / 12;
+  let val = 0;
+  const yearly = [];
+  for(let yr=1; yr<=years; yr++){
+    for(let m=0; m<12; m++){
+      val = (val + MONTHLY_CONTRIB) * (1 + r);
+    }
+    yearly.push(Math.round(val));
+  }
+  return yearly;
+}
+
+function cv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
+
+function hk(v){
+  const abs=Math.abs(v);
+  const s=v<0?'-':'';
+  if(abs>=1e6) return s+'HK$'+(abs/1e6).toFixed(2)+'M';
+  if(abs>=1e3) return s+'HK$'+(abs/1e3).toFixed(0)+'k';
+  return s+'HK$'+Math.round(abs).toLocaleString();
+}
+
+let growthChartInst=null, barChartInst=null;
+
+function update(){
+  const yrs = parseInt(document.getElementById('yrSlider').value);
+  document.getElementById('yrDisplay').textContent = yrs;
+  document.getElementById('yrInContrib').textContent = yrs;
+  document.getElementById('rankYrLabel').textContent = yrs;
+  document.getElementById('barYrLabel').textContent = yrs;
+
+  const totalInvested = MONTHLY_CONTRIB * 12 * yrs;
+  document.getElementById('totalInvested').textContent = hk(totalInvested);
+
+  const activeFunds = FUNDS.filter(f => selected.has(f.id));
+  const allSeries = {};
+  FUNDS.forEach(f => { allSeries[f.id] = simulate(f.rate, yrs); });
+
+  /* metrics — based on best active fund */
+  const sortedByFinal = [...activeFunds].sort((a,b)=>allSeries[b.id][yrs-1]-allSeries[a.id][yrs-1]);
+  const best = sortedByFinal[0];
+  const bestFinal = allSeries[best.id][yrs-1];
+  const bestGain = bestFinal - totalInvested;
+  const bestCAGR = (Math.pow(bestFinal/totalInvested, 1/yrs)-1)*100;
+
+  const metricsData = [
+    {lbl:'Best fund final value', val:hk(bestFinal), sub:best.name.split(' ').slice(0,3).join(' ')+'...', cls:'hi'},
+    {lbl:'Investment gain (best)', val:'+'+hk(bestGain), sub:'+'+((bestGain/totalInvested)*100).toFixed(0)+'% on invested capital', cls:'green-hi'},
+    {lbl:'Best fund CAGR', val:bestCAGR.toFixed(1)+'%', sub:'Annual growth rate', cls:'hi'},
+    {lbl:'Total contributions', val:hk(totalInvested), sub:yrs+' yrs × HK$3,000/mo', cls:''},
+    {lbl:'Your portion', val:hk(totalInvested/2), sub:'Employee HK$1,500/mo × '+yrs*12+' mo', cls:''},
+    {lbl:'HA portion', val:hk(totalInvested/2), sub:'Employer HK$1,500/mo × '+yrs*12+' mo', cls:''},
+  ];
+  document.getElementById('metricsRow').innerHTML = metricsData.map(m=>
+    `<div class="mc ${m.cls}">
+      <div class="mc-lbl">${m.lbl}</div>
+      <div class="mc-val" style="${m.cls==='hi'?'color:'+cv('--accent'):m.cls==='green-hi'?'color:'+cv('--green'):'color:'+cv('--text')}">${m.val}</div>
+      <div class="mc-sub">${m.sub}</div>
+    </div>`
+  ).join('');
+
+  /* ranking strip */
+  const maxVal = sortedByFinal[0] ? allSeries[sortedByFinal[0].id][yrs-1] : 1;
+  document.getElementById('rankStrip').innerHTML = sortedByFinal.map((f,i)=>{
+    const val = allSeries[f.id][yrs-1];
+    const gain = val - totalInvested;
+    const barPct = (val/maxVal*100).toFixed(1);
+    const color = cv(f.colorVar);
+    return `<div class="rank-row active">
+      <div class="rank-pos" style="color:${color}">${i+1}</div>
+      <div class="rank-dot" style="background:${color}"></div>
+      <div class="rank-name">${f.name}</div>
+      <div class="rank-bar-wrap"><div class="rank-bar" style="width:${barPct}%;background:${color}40;border:1px solid ${color}"></div></div>
+      <div class="rank-val" style="color:${color}">${hk(val)}</div>
+      <div class="rank-gain">+${hk(gain)}</div>
+    </div>`;
+  }).join('');
+
+  /* growth chart */
+  const yearLabels = Array.from({length:yrs},(_,i)=>'Yr '+(i+1));
+  const contribLine = Array.from({length:yrs},(_,i)=>MONTHLY_CONTRIB*12*(i+1));
+
+  const lgd = document.getElementById('lgd1');
+  lgd.innerHTML='';
+  activeFunds.forEach(f=>{
+    const el=document.createElement('span');el.className='leg';
+    const color=cv(f.colorVar);
+    el.innerHTML=`<span class="leg-sw" style="background:${color}"></span>${f.name.split(' ').slice(0,3).join(' ')}`;
+    lgd.appendChild(el);
+  });
+  const contribLegEl=document.createElement('span');
+  contribLegEl.className='leg';
+  contribLegEl.innerHTML=`<span class="leg-sw" style="background:rgba(255,255,255,0.2)"></span>Contributions`;
+  lgd.appendChild(contribLegEl);
+
+  const ttOpts={
+    backgroundColor:cv('--ct-tt'),borderColor:cv('--ct-ttb'),borderWidth:1,
+    titleColor:cv('--ct-ttt'),bodyColor:cv('--ct-ttv'),padding:10,
+  };
+  const scaleX={grid:{color:cv('--ct-grid')},ticks:{color:cv('--ct-tick'),font:{size:10,family:"'IBM Plex Mono',monospace"},maxTicksLimit:12}};
+  const scaleY={grid:{color:cv('--ct-grid')},ticks:{color:cv('--ct-tick'),font:{size:10,family:"'IBM Plex Mono',monospace"},callback:v=>'HK$'+(v>=1e6?(v/1e6).toFixed(1)+'M':(v/1e3).toFixed(0)+'k')}};
+
+  if(growthChartInst) growthChartInst.destroy();
+  const gDS = activeFunds.map(f=>{
+    const color=cv(f.colorVar);
+    return {
+      label:f.name,
+      data:allSeries[f.id],
+      borderColor:color,
+      borderWidth:2,
+      pointRadius:0,pointHoverRadius:4,
+      tension:0.3,fill:false,
+    };
+  });
+  gDS.push({
+    label:'Contributions',data:contribLine,
+    borderColor:'rgba(255,255,255,0.18)',borderWidth:1,borderDash:[8,4],
+    pointRadius:0,tension:0,fill:false,
+  });
+
+  growthChartInst=new Chart(document.getElementById('growthChart').getContext('2d'),{
+    type:'line',data:{labels:yearLabels,datasets:gDS},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{...ttOpts,callbacks:{label:c=>' '+c.dataset.label+': HK$'+c.parsed.y.toLocaleString()}}},
+      scales:{x:scaleX,y:scaleY}
+    }
+  });
+
+  /* bar chart at selected year */
+  if(barChartInst) barChartInst.destroy();
+  const barColors = activeFunds.map(f=>cv(f.colorVar));
+  barChartInst=new Chart(document.getElementById('barChart').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:activeFunds.map(f=>f.name.split(' ').slice(0,3).join(' ')),
+      datasets:[
+        {
+          label:'Contributions',
+          data:activeFunds.map(()=>totalInvested),
+          backgroundColor:'rgba(255,255,255,0.08)',
+          borderColor:'rgba(255,255,255,0.15)',borderWidth:1,borderRadius:4,
+        },
+        {
+          label:'Investment gain',
+          data:activeFunds.map(f=>Math.max(0,allSeries[f.id][yrs-1]-totalInvested)),
+          backgroundColor:barColors.map(c=>c+'55'),
+          borderColor:barColors,borderWidth:1,borderRadius:4,
+        },
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{...ttOpts,callbacks:{label:c=>' '+c.dataset.label+': HK$'+c.parsed.y.toLocaleString()}}},
+      scales:{x:{...scaleX,stacked:true},y:{...scaleY,stacked:true}}
+    }
+  });
+
+  /* year-by-year table */
+  const thead = document.getElementById('tableHead');
+  thead.innerHTML=`<th>Yr</th>` + activeFunds.map(f=>`<th>${f.name.split(' ').slice(0,2).join(' ')}</th><th>Gain</th>`).join('');
+
+  const tbody = document.getElementById('tablebody');
+  tbody.innerHTML = Array.from({length:yrs},(_,i)=>{
+    const yr=i+1;
+    const contrib=MONTHLY_CONTRIB*12*yr;
+    const isCur=yr===yrs;
+    const cells=activeFunds.map(f=>{
+      const val=allSeries[f.id][i];
+      const gain=val-contrib;
+      const color=cv(f.colorVar);
+      return `<td style="${isCur?'':'color:'+color}">${hk(val)}</td><td class="${isCur?'':'g'}">+${hk(gain)}</td>`;
+    }).join('');
+    return `<tr class="${isCur?'cur':''}"><td>${isCur?'▶ ':''}${yr}</td>${cells}</tr>`;
+  }).join('');
+
+  setTimeout(()=>{
+    const rows=tbody.querySelectorAll('tr');
+    if(rows[yrs-1]) rows[yrs-1].scrollIntoView({block:'nearest',behavior:'smooth'});
+  },100);
+}
+
+update();
+</script>
+</body>
+</html>
